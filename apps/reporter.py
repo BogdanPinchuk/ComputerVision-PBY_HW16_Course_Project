@@ -174,8 +174,10 @@ class Reporter:
         self._max_len_lf = 0
         self._max_len_rt = 0
 
-        self.attribute_col = self.attribute_col
-        self.result_col = self.result_col
+        curr_attr = self.attribute_col
+        curr_res = self.result_col
+        self.attribute_col = curr_attr
+        self.result_col = curr_res
 
         temp_data_list = self.data_list
         self._data_list = []
