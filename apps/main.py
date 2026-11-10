@@ -122,3 +122,33 @@ def calculate_integer_layout(total_size: int, tile_size: int, min_overlap: float
         step = base_step + (1 if i < remainder else 0)
         current_pos += step
     return np.asarray(start_positions, dtype=np.int32), np.asarray(end_positions, dtype=np.int32)
+
+
+def image_slicer(image, patch_size: tuple[int, int], min_overlap: float = 0.0) -> list[list[np.ndarray]]:
+    """
+    Crop input image into 2D grid of fixed-size patches [row][col].
+    :param image: input image as numpy ndarray (H, W) or (H, W, C)
+    :param patch_size: target patch size as (height, width)
+    :param min_overlap: minimal overlap (ratio < 1.0 or absolute pixels >= 1.0)
+    :return: 2D list of cropped patches
+    """
+    # get size of image
+    img_height, img_width = image.shape[:2]
+    patch_height, patch_width = patch_size
+
+    # calculate coordinates for slicing
+    y_starts, y_ends = calculate_integer_layout(img_height, patch_height, min_overlap=min_overlap)
+    x_starts, x_ends = calculate_integer_layout(img_width, patch_width, min_overlap=min_overlap)
+
+    # 2D list of cropped patches: [rows][cols]
+    patches = []
+
+    # slicing
+    for y1, y2 in zip(y_starts, y_ends):
+        row_patches = []
+        for x1, x2 in zip(x_starts, x_ends):
+            cropped = image[y1:y2, x1:x2]
+            row_patches.append(cropped)
+        patches.append(row_patches)
+
+    return patches
