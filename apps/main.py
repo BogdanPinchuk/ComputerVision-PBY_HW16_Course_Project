@@ -1,5 +1,6 @@
 import cv2
 import keras
+import random
 import numpy as np
 from tqdm.auto import tqdm
 import apps.reporter as rpt
@@ -9,6 +10,7 @@ from IPython.display import display
 from IPython.core.display import Markdown
 from pandas import Series, DataFrame
 from pandas.io.formats.style import Styler
+from torch.utils.data import IterableDataset
 
 
 class TqdmProgressCallback(keras.callbacks.Callback):
@@ -124,7 +126,7 @@ def calculate_integer_layout(total_size: int, tile_size: int, min_overlap: float
     return np.asarray(start_positions, dtype=np.int32), np.asarray(end_positions, dtype=np.int32)
 
 
-def image_slicer(image, patch_size: tuple[int, int], min_overlap: float = 0.0, is_flat: bool = True) -> \
+def image_slicer(image: np.ndarray, patch_size: tuple[int, int], min_overlap: float = 0.0, is_flat: bool = True) -> \
         list[list[np.ndarray]] | list[np.ndarray]:
     """
     Crop input image into 2D grid [row][col] or flat list of fixed-size patches.
@@ -158,3 +160,77 @@ def image_slicer(image, patch_size: tuple[int, int], min_overlap: float = 0.0, i
         return [patch for row in patches for patch in row]
 
     return patches
+
+
+class StreamPatchDataset(IterableDataset):
+    """
+    Streaming PyTorch IterableDataset for memory-efficient patch-based image processing.
+    Loads images on the fly, slices them into fixed-size patches,
+     and streams them sequentially without loading the full dataset into RAM.
+    """
+
+    def __init__(self, file_paths: list, patch_size: tuple[int, int] = (96, 96), min_overlap: float = 0.0,
+                 shuffle: bool = True, seed: int = -1, is_mixed_color_type: bool = False):
+        """
+        Initialize the streaming patch dataset.
+        :param file_paths: list of image file paths (Path objects or strings)
+        :param patch_size: target patch size as (height, width) tuple
+        :param min_overlap: minimal overlap (ratio < 1.0 or absolute pixels >= 1.0)
+        :param shuffle: if True, shuffles file order per epoch and patches within each image
+        :param seed: pseudo-random generator seed for reproducible shuffling (-1 disables seed)
+        :param is_mixed_color_type: if True, converts 2D grayscale images into 3-channel RGB
+        """
+        self.initial_file_paths = file_paths.copy()
+        self.file_paths = file_paths.copy()
+        self.patch_size = patch_size
+        self.min_overlap = min_overlap
+        self.shuffle = shuffle
+        self.is_mixed_color_type = is_mixed_color_type
+        self.seed = seed
+        # set seed of the random
+        self.rng = random.Random(seed) if seed > -1 else random.Random()
+
+    def reset_seed(self, seed: int | None = None) -> None:
+        """
+        Reset random generator and restore original file order for reproducible multi-model training.
+        :param seed: optional new pseudo-random seed; if None, resets using initial seed
+        """
+        if seed is not None:
+            self.seed = seed
+        self.rng = random.Random(self.seed) if self.seed > -1 else random.Random()
+        # reset list of paths
+        self.file_paths = self.initial_file_paths.copy()
+
+    def __iter__(self):
+        """
+        Iterate over image files, slice them into patches, and yield individual patches.
+        :return: generator yielding individual cropped patches as numpy ndarrays
+        """
+        # shuffle paths
+        if self.shuffle:
+            self.rng.shuffle(self.file_paths)
+
+        # processing each path
+        for file_path in self.file_paths:
+            # load image
+            img = cv2.imread(str(file_path), cv2.IMREAD_UNCHANGED)
+            if img is None:
+                print(f"File read error: {file_path}")
+                continue
+            else:
+                # check if we have a mix of images
+                if self.is_mixed_color_type and img.ndim == 2:
+                    # convert into RGB
+                    img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+                elif img.ndim == 3:
+                    # convert into RGB
+                    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+                # apply slicing
+                patches = image_slicer(np.asarray(img), self.patch_size, min_overlap=self.min_overlap)
+                # shuffle patches
+                if self.shuffle:
+                    self.rng.shuffle(patches)
+                # provide patches
+                for patch in patches:
+                    yield patch
