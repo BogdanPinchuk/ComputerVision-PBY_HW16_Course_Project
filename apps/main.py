@@ -71,3 +71,54 @@ def train_test_split_by_order(array, test_size: float) -> tuple:
         test_array = array[-n_test:]
 
     return train_array, test_array
+
+
+def calculate_integer_layout(total_size: int, tile_size: int, min_overlap: float = 0.0, include: bool = True) \
+        -> tuple[np.ndarray, np.ndarray]:
+    """
+    Calculate 1D start and end coordinates for slicing with uniform step and minimal overlap
+    :param total_size: full size of the dimension (image height or width)
+    :param tile_size: target patch size (e.g. 128)
+    :param min_overlap: minimal overlap (ratio < 1.0 or absolute pixels >= 1.0)
+    :param include: if True, returns [start, end) for Python slicing; if False, returns [start, end] inclusive pixel index
+    :return: tuple of start and end positions as numpy int32 arrays
+    """
+    if total_size <= tile_size:
+        end_pos = total_size if include else total_size - 1
+        return np.array([0], dtype=np.int32), np.array([end_pos], dtype=np.int32)
+
+    # normalization min overlap
+    if min_overlap <= 0.0:
+        overlap_px = 0
+    elif min_overlap < 1.0:
+        overlap_px = int(np.floor(tile_size * min_overlap))
+    else:
+        overlap_px = int(min_overlap)
+
+    # protection overlap
+    if overlap_px >= tile_size:
+        overlap_px = tile_size - 1
+
+    useful_size = tile_size - overlap_px
+    total_shift = total_size - tile_size
+
+    # calculate intervals for full overlap
+    intervals = int(np.ceil(total_shift / useful_size))
+    n = intervals + 1
+
+    # step and reminder
+    base_step, remainder = divmod(total_shift, intervals)
+
+    # generate coordinates
+    start_positions = []
+    end_positions = []
+    current_pos = 0
+
+    for i in range(n):
+        start_positions.append(current_pos)
+        end_pos = current_pos + tile_size - (0 if include else 1)
+        end_positions.append(end_pos)
+
+        step = base_step + (1 if i < remainder else 0)
+        current_pos += step
+    return np.asarray(start_positions, dtype=np.int32), np.asarray(end_positions, dtype=np.int32)
