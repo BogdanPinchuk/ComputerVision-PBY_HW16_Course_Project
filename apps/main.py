@@ -169,7 +169,7 @@ class StreamPatchDataset(IterableDataset):
      and streams them sequentially without loading the full dataset into RAM.
     """
 
-    def __init__(self, file_paths: list, patch_size: tuple[int, int] = (96, 96), min_overlap: float = 0.0,
+    def __init__(self, file_paths: list, patch_size: tuple[int, int] = (64, 64), min_overlap: float = 0.0,
                  shuffle: bool = True, seed: int = -1, is_mixed_color_type: bool = False):
         """
         Initialize the streaming patch dataset.
