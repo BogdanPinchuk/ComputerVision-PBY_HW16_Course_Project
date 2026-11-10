@@ -124,13 +124,15 @@ def calculate_integer_layout(total_size: int, tile_size: int, min_overlap: float
     return np.asarray(start_positions, dtype=np.int32), np.asarray(end_positions, dtype=np.int32)
 
 
-def image_slicer(image, patch_size: tuple[int, int], min_overlap: float = 0.0) -> list[list[np.ndarray]]:
+def image_slicer(image, patch_size: tuple[int, int], min_overlap: float = 0.0, is_flat: bool = True) -> \
+        list[list[np.ndarray]] | list[np.ndarray]:
     """
-    Crop input image into 2D grid of fixed-size patches [row][col].
+    Crop input image into 2D grid [row][col] or flat list of fixed-size patches.
     :param image: input image as numpy ndarray (H, W) or (H, W, C)
     :param patch_size: target patch size as (height, width)
     :param min_overlap: minimal overlap (ratio < 1.0 or absolute pixels >= 1.0)
-    :return: 2D list of cropped patches
+    :param is_flat: if True, returns flat 1D list of patches; if False, returns 2D grid [rows][cols]
+    :return: 2D grid or 1D list of cropped patches
     """
     # get size of image
     img_height, img_width = image.shape[:2]
@@ -150,5 +152,9 @@ def image_slicer(image, patch_size: tuple[int, int], min_overlap: float = 0.0) -
             cropped = image[y1:y2, x1:x2]
             row_patches.append(cropped)
         patches.append(row_patches)
+
+    # flatten to 1D if requested
+    if is_flat:
+        return [patch for row in patches for patch in row]
 
     return patches
