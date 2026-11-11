@@ -15,40 +15,6 @@ from torch.utils.data import IterableDataset
 from skimage.util import random_noise
 
 
-class TqdmProgressCallback(keras.callbacks.Callback):
-    def __init__(self, total_epochs=None):
-        super().__init__()
-        self.total_epochs = total_epochs
-        self.pbar = None
-
-    def on_train_begin(self, logs=None):
-        self.pbar = tqdm(total=self.total_epochs, desc="Total training", leave=True)
-
-    def on_epoch_end(self, epoch, logs=None):
-        logs = logs or {}
-        loss = float(logs.get('loss', 0.0))
-        acc = float(logs.get('accuracy', 0.0))
-        status = float((epoch + 1.0) / self.total_epochs)
-        self.pbar.write(f"Epoch: {epoch + 1}, Loss: {loss:.4f}, Accuracy: {acc:.4f}, Status: {status:.2%}")
-        self.pbar.update(1)
-
-    def on_train_end(self, logs=None):
-        if self.pbar:
-            self.pbar.close()
-
-    def on_predict_begin(self, logs=None):
-        total_steps = self.params.get('steps', None)
-        self.pbar = tqdm(total=total_steps, desc="Predicting", leave=True)
-
-    def on_predict_batch_end(self, batch, logs=None):
-        if self.pbar:
-            self.pbar.update(1)
-
-    def on_predict_end(self, logs=None):
-        if self.pbar:
-            self.pbar.close()
-
-
 def train_test_split_by_order(array, test_size: float = 0.2) -> tuple:
     """
     Split arrays or matrices into order to train and test subset
@@ -187,6 +153,40 @@ def calculate_fft_spectrum(image: np.ndarray, workers: int = -1, ) -> \
     freq_x = np.asanyarray(sp_fft.fftshift(sp_fft.fftfreq(w, d=1.0)).astype(np.float32))
 
     return log_amplitudes, raw_amplitudes, phases, (freq_y, freq_x)
+
+
+class TqdmProgressCallback(keras.callbacks.Callback):
+    def __init__(self, total_epochs=None):
+        super().__init__()
+        self.total_epochs = total_epochs
+        self.pbar = None
+
+    def on_train_begin(self, logs=None):
+        self.pbar = tqdm(total=self.total_epochs, desc="Total training", leave=True)
+
+    def on_epoch_end(self, epoch, logs=None):
+        logs = logs or {}
+        loss = float(logs.get('loss', 0.0))
+        acc = float(logs.get('accuracy', 0.0))
+        status = float((epoch + 1.0) / self.total_epochs)
+        self.pbar.write(f"Epoch: {epoch + 1}, Loss: {loss:.4f}, Accuracy: {acc:.4f}, Status: {status:.2%}")
+        self.pbar.update(1)
+
+    def on_train_end(self, logs=None):
+        if self.pbar:
+            self.pbar.close()
+
+    def on_predict_begin(self, logs=None):
+        total_steps = self.params.get('steps', None)
+        self.pbar = tqdm(total=total_steps, desc="Predicting", leave=True)
+
+    def on_predict_batch_end(self, batch, logs=None):
+        if self.pbar:
+            self.pbar.update(1)
+
+    def on_predict_end(self, logs=None):
+        if self.pbar:
+            self.pbar.close()
 
 
 class GeometricAugmentor:
