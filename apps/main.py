@@ -2,10 +2,11 @@ import cv2
 import keras
 import random
 import numpy as np
-from tqdm.auto import tqdm
+import scipy.fft as sp_fft
 import apps.reporter as rpt
-from pathlib import Path
 import matplotlib.pyplot as plt
+from tqdm.auto import tqdm
+from pathlib import Path
 from IPython.display import display
 from IPython.core.display import Markdown
 from pandas import Series, DataFrame
@@ -161,6 +162,31 @@ def image_slicer(image: np.ndarray, patch_size: tuple[int, int], min_overlap: fl
         return [patch for row in patches for patch in row]
 
     return patches
+
+
+def calculate_fft_spectrum(image: np.ndarray, workers: int = -1, ) -> \
+        tuple[np.ndarray, np.ndarray, np.ndarray, tuple[np.ndarray, np.ndarray]]:
+    """
+    Compute 2D Fast Fourier Transform and extract amplitudes, phases, and spatial frequencies.
+    :param image: input image as 2D (H, W) or 3D (H, W, C) numpy ndarray
+    :param workers: number of parallel CPU worker threads (-1 for all cores)
+    :return: (log_amplitudes, raw_amplitudes, phases, (freq_y, freq_x))
+    """
+    image_2d = image if image.ndim == 2 else cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+
+    h, w = image_2d.shape[:2]
+
+    spectrum_complex = sp_fft.fftshift(sp_fft.fft2(image_2d.astype(np.float32), workers=workers))
+
+    raw_amplitudes = np.asanyarray(np.abs(spectrum_complex).astype(np.float32))
+    log_amplitudes = np.asanyarray(np.log1p(raw_amplitudes).astype(np.float32))
+
+    phases = np.asanyarray(np.angle(spectrum_complex).astype(np.float32))
+
+    freq_y = np.asanyarray(sp_fft.fftshift(sp_fft.fftfreq(h, d=1.0)).astype(np.float32))
+    freq_x = np.asanyarray(sp_fft.fftshift(sp_fft.fftfreq(w, d=1.0)).astype(np.float32))
+
+    return log_amplitudes, raw_amplitudes, phases, (freq_y, freq_x)
 
 
 class GeometricAugmentor:
