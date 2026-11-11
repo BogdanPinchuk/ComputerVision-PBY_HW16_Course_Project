@@ -245,7 +245,7 @@ class StreamPatchDataset(IterableDataset):
         self.min_overlap = min_overlap
         self.shuffle = shuffle
         self.is_mixed_color_type = is_mixed_color_type
-        self.augmentor = augmentor
+        self.geo_augmentor = augmentor
         # set seed of the random
         self.seed = seed
         self.rng = np.random.default_rng(seed if seed > -1 else None)
@@ -296,7 +296,12 @@ class StreamPatchDataset(IterableDataset):
                         patch = cv2.cvtColor(patch, cv2.COLOR_BGR2RGB)
 
                     # apply geometric augmentation
-                    if self.augmentor is not None:
-                        patch = self.augmentor(patch, rng=self.rng)
+                    if self.geo_augmentor is not None:
+                        clean_patch = self.geo_augmentor(patch, rng=self.rng)
+                    else:
+                        clean_patch = patch
 
-                    yield patch
+                    # for other augmentations
+                    augmented_patch = clean_patch.copy()
+
+                    yield augmented_patch, clean_patch
