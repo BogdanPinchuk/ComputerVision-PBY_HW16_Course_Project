@@ -11,6 +11,7 @@ from IPython.core.display import Markdown
 from pandas import Series, DataFrame
 from pandas.io.formats.style import Styler
 from torch.utils.data import IterableDataset
+from skimage.util import random_noise
 
 
 class TqdmProgressCallback(keras.callbacks.Callback):
@@ -214,6 +215,128 @@ class GeometricAugmentor:
         if self.p_rot > 0.0 and active_rng.random() < self.p_rot:
             k = int(active_rng.integers(1, 4))
             image = np.rot90(image, k=k)
+
+        # ensure contiguous array in memory
+        return np.ascontiguousarray(image)
+
+
+class NoiseInjector:
+    """
+    Image noise injector using scikit-image standard primitives and custom 2D harmonic stripes.
+    Supports 6 noise models: AWGN, Salt & Pepper, Speckle, Poisson, Periodic Striped, Hybrid Mix,
+    and an identity pass-through mode ('clean').
+    """
+
+    STATISTICAL_MODES = ('gaussian', 'salt_and_pepper', 'speckle', 'poisson')
+    AVAILABLE_MODES = ('gaussian', 'salt_and_pepper', 'speckle', 'poisson', 'periodic', 'hybrid', 'clean')
+
+    def __init__(self, mode: str = 'random',
+                 sigma: float | tuple[float, float] = (10.0, 50.0),
+                 p_sp: float | tuple[float, float] = (0.01, 0.05),
+                 speckle_var: float | tuple[float, float] = (0.01, 0.05),
+                 stripe_amplitude: float | tuple[float, float] = (15.0, 40.0),
+                 stripe_frequency: float | tuple[float, float] = (4.0, 12.0),
+                 seed: int = -1):
+        """
+        Image noise injector using scikit-image standard primitives and custom 2D harmonic stripes.
+        Supports 6 noise models: AWGN, Salt & Pepper, Speckle, Poisson, Periodic Striped, Hybrid Mix,
+         and an identity pass-through mode ('clean').
+        """
+        self.mode = mode
+        self.sigma = sigma
+        self.p_sp = p_sp
+        self.speckle_var = speckle_var
+        self.stripe_amplitude = stripe_amplitude
+        self.stripe_frequency = stripe_frequency
+        self.seed = seed
+        self.rng = np.random.default_rng(seed if seed > -1 else None)
+
+    def reset_seed(self, seed: int | None = None) -> None:
+        """
+        Reset internal pseudo-random number generator for scientific reproducibility.
+        """
+        if seed is not None:
+            self.seed = seed
+        self.rng = np.random.default_rng(self.seed if self.seed > -1 else None)
+
+    @staticmethod
+    def _sample(val: float | tuple[float, float], rng: np.random.Generator) -> float:
+        """
+        Sample scalar value from interval or return fixed constant.
+        """
+        return float(rng.uniform(val[0], val[1])) if isinstance(val, (tuple, list)) else float(val)
+
+    def _add_periodic(self, image: np.ndarray, rng: np.random.Generator) -> np.ndarray:
+        """
+        Harmonic 2D periodic striped noise: A * sin(2pi * (fx*x + fy*y) + phi).
+        """
+        amp = self._sample(self.stripe_amplitude, rng)
+        freq = self._sample(self.stripe_frequency, rng)
+        theta = float(rng.uniform(0.0, np.pi))
+        phi = float(rng.uniform(0.0, 2.0 * np.pi))
+
+        h, w = image.shape[:2]
+        y, x = np.ogrid[:h, :w]
+        fx = (freq * np.cos(theta)) / float(w)
+        fy = (freq * np.sin(theta)) / float(h)
+
+        stripe = amp * np.sin(2.0 * np.pi * (fx * x + fy * y) + phi)
+        if image.ndim == 3:
+            stripe = stripe[..., np.newaxis]
+
+        return np.clip(image.astype(np.float32) + stripe, 0, 255).astype(image.dtype)
+
+    def _add_statistical_noise(self, image: np.ndarray, mode: str, rng: np.random.Generator) -> np.ndarray:
+        """
+        Add noise using scikit-image primitives and map back to uint8 [0, 255].
+        """
+        match mode:
+            case 'gaussian':
+                sigma = self._sample(self.sigma, rng)
+                var = (sigma / 255.0) ** 2
+                noisy = random_noise(image, mode='gaussian', var=var, rng=rng)
+            case 'salt_and_pepper':
+                amount = self._sample(self.p_sp, rng)
+                noisy = random_noise(image, mode='s&p', amount=amount, rng=rng)
+            case 'speckle':
+                var = self._sample(self.speckle_var, rng)
+                noisy = random_noise(image, mode='speckle', var=var, rng=rng)
+            case 'poisson':
+                noisy = random_noise(image, mode='poisson', rng=rng)
+            case _:
+                return image
+
+        return (noisy * 255.0).astype(image.dtype)
+
+    def __call__(self, image: np.ndarray, mode: str | None = None,
+                 rng: np.random.Generator | None = None) -> np.ndarray:
+        """
+        Inject configured or stochastic noise into the input image patch.
+        """
+        # select active generator
+        active_rng = rng if rng is not None else self.rng
+        # select active mode
+        if mode is not None:
+            active_mode = mode
+        else:
+            # random mode
+            active_mode = str(active_rng.choice(self.AVAILABLE_MODES)) if self.mode == 'random' else self.mode
+
+        if active_mode not in self.AVAILABLE_MODES:
+            raise ValueError(f"Unknown noise mode: {active_mode}")
+
+        match active_mode:
+            case 'hybrid':
+                image = self._add_periodic(image, active_rng)
+                # update mode to add skimage noise
+                active_mode = str(active_rng.choice(self.STATISTICAL_MODES))
+                image = self._add_statistical_noise(image, active_mode, active_rng)
+            case 'periodic':
+                image = self._add_periodic(image, active_rng)
+            case 'clean':
+                image = image.copy()
+            case _:
+                image = self._add_statistical_noise(image, active_mode, active_rng)
 
         # ensure contiguous array in memory
         return np.ascontiguousarray(image)
