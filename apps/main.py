@@ -287,14 +287,6 @@ class StreamPatchDataset(IterableDataset):
                     self.rng.shuffle(patches)
                 # provide patches
                 for patch in patches:
-                    # check if we have a mix of images
-                    if self.is_mixed_color_type and not is_color:
-                        # convert into RGB
-                        patch = cv2.cvtColor(patch, cv2.COLOR_GRAY2RGB)
-                    elif is_color:
-                        # convert into RGB
-                        patch = cv2.cvtColor(patch, cv2.COLOR_BGR2RGB)
-
                     # apply geometric augmentation
                     if self.geo_augmentor is not None:
                         clean_patch = self.geo_augmentor(patch, rng=self.rng)
@@ -303,5 +295,15 @@ class StreamPatchDataset(IterableDataset):
 
                     # for other augmentations
                     augmented_patch = clean_patch.copy()
+
+                    # check if we have a mix of images
+                    if self.is_mixed_color_type and not is_color:
+                        # convert into RGB
+                        augmented_patch = cv2.cvtColor(augmented_patch, cv2.COLOR_GRAY2RGB)
+                        clean_patch = cv2.cvtColor(clean_patch, cv2.COLOR_GRAY2RGB)
+                    elif is_color:
+                        # convert into RGB
+                        augmented_patch = cv2.cvtColor(augmented_patch, cv2.COLOR_BGR2RGB)
+                        clean_patch = cv2.cvtColor(clean_patch, cv2.COLOR_BGR2RGB)
 
                     yield augmented_patch, clean_patch
