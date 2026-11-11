@@ -351,7 +351,7 @@ class StreamPatchDataset(IterableDataset):
 
     def __init__(self, file_paths: list, patch_size: tuple[int, int] = (96, 96), min_overlap: float = 0.0,
                  shuffle: bool = True, seed: int = -1, is_mixed_color_type: bool = False,
-                 augmentor=None):
+                 g_augmentor: GeometricAugmentor | None = None, n_augmentor: NoiseInjector | None = None):
         """
         Initialize the streaming patch dataset.
         :param file_paths: list of image file paths (Path objects or strings)
@@ -360,7 +360,8 @@ class StreamPatchDataset(IterableDataset):
         :param shuffle: if True, shuffles file order per epoch and patches within each image
         :param seed: pseudo-random generator seed for reproducible shuffling (-1 disables seed)
         :param is_mixed_color_type: if True, converts 2D grayscale images into 3-channel RGB
-        :param augmentor: optional geometric augmentor callable applied to patches
+        :param g_augmentor: optional geometric augmentor callable applied to patches
+        :param n_augmentor: optional noise injector callable applied to patches
         """
         self.initial_file_paths = file_paths.copy()
         self.file_paths = file_paths.copy()
@@ -368,7 +369,8 @@ class StreamPatchDataset(IterableDataset):
         self.min_overlap = min_overlap
         self.shuffle = shuffle
         self.is_mixed_color_type = is_mixed_color_type
-        self.geo_augmentor = augmentor
+        self.geom_augmentor = g_augmentor
+        self.noise_augmentor = n_augmentor
         # set seed of the random
         self.seed = seed
         self.rng = np.random.default_rng(seed if seed > -1 else None)
@@ -411,13 +413,17 @@ class StreamPatchDataset(IterableDataset):
                 # provide patches
                 for patch in patches:
                     # apply geometric augmentation
-                    if self.geo_augmentor is not None:
-                        clean_patch = self.geo_augmentor(patch, rng=self.rng)
+                    if self.geom_augmentor is not None:
+                        clean_patch = self.geom_augmentor(patch, rng=self.rng)
                     else:
                         clean_patch = patch
 
                     # for other augmentations
                     augmented_patch = clean_patch.copy()
+
+                    # apply noice augmentation
+                    if self.noise_augmentor is not None:
+                        augmented_patch = self.noise_augmentor(augmented_patch, rng=self.rng)
 
                     # check if we have a mix of images
                     if self.is_mixed_color_type and not is_color:
