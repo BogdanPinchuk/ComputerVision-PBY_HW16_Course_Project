@@ -5,17 +5,20 @@ import numpy as np
 import scipy.fft as sp_fft
 import apps.reporter as rpt
 import matplotlib.pyplot as plt
-from tqdm.auto import tqdm
 from pathlib import Path
+from tqdm.auto import tqdm
 from IPython.display import display
-from IPython.core.display import Markdown
 from pandas import Series, DataFrame
+from skimage.util import random_noise
+from IPython.core.display import Markdown
 from pandas.io.formats.style import Styler
 from torch.utils.data import IterableDataset
-from skimage.util import random_noise
+from skimage.metrics import peak_signal_noise_ratio, structural_similarity
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score, mean_absolute_percentage_error
 
 
-def train_test_split_by_order(array, test_size: float = 0.2) -> tuple:
+def train_test_split_by_order(array,
+                              test_size: float = 0.2) -> tuple:
     """
     Split arrays or matrices into order to train and test subset
     :param array: input data
@@ -43,8 +46,10 @@ def train_test_split_by_order(array, test_size: float = 0.2) -> tuple:
     return train_array, test_array
 
 
-def calculate_integer_layout(total_size: int, tile_size: int, min_overlap: float = 0.0, include: bool = True) \
-        -> tuple[np.ndarray, np.ndarray]:
+def calculate_integer_layout(total_size: int,
+                             tile_size: int,
+                             min_overlap: float = 0.0,
+                             include: bool = True) -> tuple[np.ndarray, np.ndarray]:
     """
     Calculate 1D start and end coordinates for slicing with uniform step and minimal overlap
     :param total_size: full size of the dimension (image height or width)
@@ -94,8 +99,10 @@ def calculate_integer_layout(total_size: int, tile_size: int, min_overlap: float
     return np.asarray(start_positions, dtype=np.int32), np.asarray(end_positions, dtype=np.int32)
 
 
-def image_slicer(image: np.ndarray, patch_size: tuple[int, int], min_overlap: float = 0.0, is_flat: bool = True) -> \
-        list[list[np.ndarray]] | list[np.ndarray]:
+def image_slicer(image: np.ndarray,
+                 patch_size: tuple[int, int],
+                 min_overlap: float = 0.0,
+                 is_flat: bool = True) -> list[list[np.ndarray]] | list[np.ndarray]:
     """
     Crop input image into 2D grid [row][col] or flat list of fixed-size patches.
     :param image: input image as numpy ndarray (H, W) or (H, W, C)
@@ -130,7 +137,8 @@ def image_slicer(image: np.ndarray, patch_size: tuple[int, int], min_overlap: fl
     return patches
 
 
-def calculate_fft_spectrum(image: np.ndarray, workers: int = -1, ) -> \
+def calculate_fft_spectrum(image: np.ndarray,
+                           workers: int = -1) -> \
         tuple[np.ndarray, np.ndarray, np.ndarray, tuple[np.ndarray, np.ndarray]]:
     """
     Compute 2D Fast Fourier Transform and extract amplitudes, phases, and spatial frequencies.
@@ -153,6 +161,74 @@ def calculate_fft_spectrum(image: np.ndarray, workers: int = -1, ) -> \
     freq_x = np.asanyarray(sp_fft.fftshift(sp_fft.fftfreq(w, d=1.0)).astype(np.float32))
 
     return log_amplitudes, raw_amplitudes, phases, (freq_y, freq_x)
+
+
+def calculate_metrics(original_image: np.ndarray,
+                      changed_image: np.ndarray,
+                      data_range: float = 255.0,
+                      caption: str = "Metrics",
+                      is_print: bool = True) -> Styler:
+    """
+    Calculate and report comprehensive image denoising and restoration quality metrics.
+    :param original_image: ground truth reference image (uint8 or float)
+    :param changed_image: predicted / restored / filtered image
+    :param data_range: peak signal value for PSNR and SSIM dynamic range (default: 255.0)
+    :param caption: title caption for the printed report
+    :param is_print: if True, prints the formatted report via Reporter
+    :return: DataFrame Styler with computed metrics
+    """
+    rp = rpt.Reporter()
+    rp.tolerance = 4
+
+    # set similar dimension
+    if original_image.ndim < changed_image.ndim:
+        original_image = np.repeat(original_image[..., np.newaxis], 3, axis=-1)
+    elif original_image.ndim > changed_image.ndim:
+        changed_image = np.repeat(changed_image[..., np.newaxis], 3, axis=-1)
+
+    original_flat = original_image.flatten()
+    changed_flat = changed_image.flatten()
+
+    # Peak Signal-To-Noise Ratio
+    psnr = peak_signal_noise_ratio(original_image, changed_image, data_range=data_range)
+    rp.add_item("PSNR, dB", rp.format_value(psnr))
+
+    # Structural Similarity Index
+    channel_axis = -1 if original_image.ndim == 3 else None
+    ssim = structural_similarity(original_image, changed_image, data_range=data_range, channel_axis=channel_axis)
+    rp.add_item("SSIM", rp.format_value(ssim))
+
+    # Mean Absolute Error
+    mae = mean_absolute_error(original_flat, changed_flat)
+    rp.add_item("MAE", rp.format_value(mae))  # type: ignore
+
+    # Mean Squared Error
+    mse = mean_squared_error(original_flat, changed_flat)
+    rp.add_item("MSE", rp.format_value(mse))  # type: ignore
+
+    # Root Mean Squared Error
+    rmse = np.sqrt(mse)
+    rp.add_item("RMSE", rp.format_value(rmse))  # type: ignore
+
+    # R2 - coefficient of determination
+    r2 = r2_score(original_flat, changed_flat)
+    rp.add_item(f"R²\n(coefficient of determination)", rp.format_value(r2))
+
+    # Mean Absolute Percentage Error
+    non_zero_mask = original_flat > 0
+    if np.any(non_zero_mask):
+        mape = mean_absolute_percentage_error(original_flat[non_zero_mask], changed_flat[non_zero_mask])
+        rp.add_item("MAPE\n(excluded zero values)", rp.format_value(mape))
+    else:
+        rp.add_item("MAPE\n(excluded zero values)", "N/A")
+
+    df = rp.get_pd_report(caption)
+
+    # Print results
+    if is_print:
+        rp.print_pd_report(caption)
+
+    return df
 
 
 class TqdmProgressCallback(keras.callbacks.Callback):
