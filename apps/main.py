@@ -47,7 +47,7 @@ class TqdmProgressCallback(keras.callbacks.Callback):
             self.pbar.close()
 
 
-def train_test_split_by_order(array, test_size: float) -> tuple:
+def train_test_split_by_order(array, test_size: float = 0.2) -> tuple:
     """
     Split arrays or matrices into order to train and test subset
     :param array: input data
