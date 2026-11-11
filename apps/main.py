@@ -162,6 +162,63 @@ def image_slicer(image: np.ndarray, patch_size: tuple[int, int], min_overlap: fl
     return patches
 
 
+class GeometricAugmentor:
+    """
+    Random D4 dihedral symmetry geometric augmentor for 2D patches and images.
+    Applies random horizontal flips, vertical flips, and orthogonal rotations (0, 90, 180, 270 deg).
+    """
+
+    def __init__(self, p_flip_h: float = 0.5, p_flip_v: float = 0.5, p_rot: float = 0.75, seed: int = -1):
+        """
+        Initialize geometric augmentor with probability clipping.
+        :param p_flip_h: probability of horizontal flip (clipped to [0.0, 1.0])
+        :param p_flip_v: probability of vertical flip (clipped to [0.0, 1.0])
+        :param p_rot: probability of orthogonal rotation (clipped to [0.0, 1.0])
+        :param seed: pseudo-random seed for standalone usage (-1 disables deterministic seed)
+        """
+        self.p_flip_h = float(np.clip(p_flip_h, 0.0, 1.0))
+        self.p_flip_v = float(np.clip(p_flip_v, 0.0, 1.0))
+        self.p_rot = float(np.clip(p_rot, 0.0, 1.0))
+        self.seed = seed
+        # set default random generator
+        self.rng = np.random.default_rng(seed if seed > -1 else None)
+
+    def reset_seed(self, seed: int | None = None) -> None:
+        """
+        Reset pseudo-random generator state for reproducible multi-run experiments.
+        :param seed: optional new seed; if None, resets using initial seed
+        """
+        if seed is not None:
+            self.seed = seed
+        self.rng = np.random.default_rng(self.seed if self.seed > -1 else None)
+
+    def __call__(self, image: np.ndarray, rng: np.random.Generator | None = None) -> np.ndarray:
+        """
+        Apply random geometric transformations to input image or patch.
+        :param image: input image as numpy ndarray (H, W) or (H, W, C)
+        :param rng: optional injected numpy random Generator for synchronized pipeline
+        :return: augmented image as contiguous numpy ndarray
+        """
+        # select active generator
+        active_rng = rng if rng is not None else self.rng
+
+        # horizontal flip
+        if self.p_flip_h > 0.0 and active_rng.random() < self.p_flip_h:
+            image = np.fliplr(image)
+
+        # vertical flip
+        if self.p_flip_v > 0.0 and active_rng.random() < self.p_flip_v:
+            image = np.flipud(image)
+
+        # orthogonal rotation (90, 180, 270 degrees)
+        if self.p_rot > 0.0 and active_rng.random() < self.p_rot:
+            k = int(active_rng.integers(1, 4))
+            image = np.rot90(image, k=k)
+
+        # ensure contiguous array in memory
+        return np.ascontiguousarray(image)
+
+
 class StreamPatchDataset(IterableDataset):
     """
     Streaming PyTorch IterableDataset for memory-efficient patch-based image processing.
@@ -170,7 +227,8 @@ class StreamPatchDataset(IterableDataset):
     """
 
     def __init__(self, file_paths: list, patch_size: tuple[int, int] = (96, 96), min_overlap: float = 0.0,
-                 shuffle: bool = True, seed: int = -1, is_mixed_color_type: bool = False):
+                 shuffle: bool = True, seed: int = -1, is_mixed_color_type: bool = False,
+                 augmentor=None):
         """
         Initialize the streaming patch dataset.
         :param file_paths: list of image file paths (Path objects or strings)
@@ -179,6 +237,7 @@ class StreamPatchDataset(IterableDataset):
         :param shuffle: if True, shuffles file order per epoch and patches within each image
         :param seed: pseudo-random generator seed for reproducible shuffling (-1 disables seed)
         :param is_mixed_color_type: if True, converts 2D grayscale images into 3-channel RGB
+        :param augmentor: optional geometric augmentor callable applied to patches
         """
         self.initial_file_paths = file_paths.copy()
         self.file_paths = file_paths.copy()
@@ -186,9 +245,10 @@ class StreamPatchDataset(IterableDataset):
         self.min_overlap = min_overlap
         self.shuffle = shuffle
         self.is_mixed_color_type = is_mixed_color_type
-        self.seed = seed
+        self.augmentor = augmentor
         # set seed of the random
-        self.rng = random.Random(seed) if seed > -1 else random.Random()
+        self.seed = seed
+        self.rng = np.random.default_rng(seed if seed > -1 else None)
 
     def reset_seed(self, seed: int | None = None) -> None:
         """
@@ -197,7 +257,7 @@ class StreamPatchDataset(IterableDataset):
         """
         if seed is not None:
             self.seed = seed
-        self.rng = random.Random(self.seed) if self.seed > -1 else random.Random()
+        self.rng = np.random.default_rng(self.seed if self.seed > -1 else None)
         # reset list of paths
         self.file_paths = self.initial_file_paths.copy()
 
@@ -234,4 +294,9 @@ class StreamPatchDataset(IterableDataset):
                     elif is_color:
                         # convert into RGB
                         patch = cv2.cvtColor(patch, cv2.COLOR_BGR2RGB)
+
+                    # apply geometric augmentation
+                    if self.augmentor is not None:
+                        patch = self.augmentor(patch, rng=self.rng)
+
                     yield patch
