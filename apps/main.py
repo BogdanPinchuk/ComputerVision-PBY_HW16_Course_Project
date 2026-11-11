@@ -218,14 +218,8 @@ class StreamPatchDataset(IterableDataset):
                 print(f"File read error: {file_path}")
                 continue
             else:
-                # check if we have a mix of images
-                if self.is_mixed_color_type and img.ndim == 2:
-                    # convert into RGB
-                    img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
-                elif img.ndim == 3:
-                    # convert into RGB
-                    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-
+                # get image type color or grayscale
+                is_color = True if img.ndim == 3 else False
                 # apply slicing
                 patches = image_slicer(np.asarray(img), self.patch_size, min_overlap=self.min_overlap)
                 # shuffle patches
@@ -233,4 +227,11 @@ class StreamPatchDataset(IterableDataset):
                     self.rng.shuffle(patches)
                 # provide patches
                 for patch in patches:
+                    # check if we have a mix of images
+                    if self.is_mixed_color_type and not is_color:
+                        # convert into RGB
+                        patch = cv2.cvtColor(patch, cv2.COLOR_GRAY2RGB)
+                    elif is_color:
+                        # convert into RGB
+                        patch = cv2.cvtColor(patch, cv2.COLOR_BGR2RGB)
                     yield patch
