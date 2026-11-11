@@ -163,6 +163,45 @@ def calculate_fft_spectrum(image: np.ndarray,
     return log_amplitudes, raw_amplitudes, phases, (freq_y, freq_x)
 
 
+def apply_gaussian_filter(image: np.ndarray,
+                          ksize: tuple[int, int] = (5, 5),
+                          sigma_x: float = 1.2) -> np.ndarray:
+    """
+    Apply linear Gaussian spatial filtering for high-frequency noise attenuation.
+    :param image: input image as uint8 ndarray (H, W) or (H, W, C)
+    :param ksize: kernel aperture size (must be positive and odd) or (0, 0) for auto-sigma
+    :param sigma_x: Gaussian kernel standard deviation along X-axis
+    :return: filtered image as uint8 ndarray with identical shape
+    """
+    return cv2.GaussianBlur(image, ksize=ksize, sigmaX=sigma_x)
+
+
+def apply_median_filter(image: np.ndarray,
+                        ksize: int = 3) -> np.ndarray:
+    """
+    Apply non-linear rank median filtering.
+    :param image: input image as uint8 ndarray (H, W) or (H, W, C)
+    :param ksize: aperture linear size (must be odd and greater than 1, e.g. 3, 5)
+    :return: filtered image as uint8 ndarray with identical shape
+    """
+    return cv2.medianBlur(image, ksize=ksize)
+
+
+def apply_bilateral_filter(image: np.ndarray,
+                           d: int = 7,
+                           sigma_color: float = 50.0,
+                           sigma_space: float = 50.0) -> np.ndarray:
+    """
+    Apply edge-preserving bilateral filtering.
+    :param image: input image as uint8 ndarray (H, W) or (H, W, C)
+    :param d: diameter of each pixel neighborhood (e.g. 5-9, or -1 for auto-adaptation)
+    :param sigma_color: filter sigma in the color/intensity space
+    :param sigma_space: filter sigma in the coordinate space
+    :return: filtered image as uint8 ndarray with identical shape
+    """
+    return cv2.bilateralFilter(image, d=d, sigmaColor=sigma_color, sigmaSpace=sigma_space)
+
+
 def calculate_metrics(original_image: np.ndarray,
                       changed_image: np.ndarray,
                       data_range: float = 255.0,
