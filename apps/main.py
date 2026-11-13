@@ -282,7 +282,10 @@ class GeometricAugmentor:
     Applies random horizontal flips, vertical flips, and orthogonal rotations (0, 90, 180, 270 deg).
     """
 
-    def __init__(self, p_flip_h: float = 0.5, p_flip_v: float = 0.5, p_rot: float = 0.75, seed: int = -1):
+    def __init__(self, p_flip_h: float = 0.5,
+                 p_flip_v: float = 0.5,
+                 p_rot: float = 0.75,
+                 seed: int = -1):
         """
         Initialize geometric augmentor with probability clipping.
         :param p_flip_h: probability of horizontal flip (clipped to [0.0, 1.0])
@@ -306,7 +309,8 @@ class GeometricAugmentor:
             self.seed = seed
         self.rng = np.random.default_rng(self.seed if self.seed > -1 else None)
 
-    def __call__(self, image: np.ndarray, rng: np.random.Generator | None = None) -> np.ndarray:
+    def __call__(self, image: np.ndarray,
+                 rng: np.random.Generator | None = None) -> np.ndarray:
         """
         Apply random geometric transformations to input image or patch.
         :param image: input image as numpy ndarray (H, W) or (H, W, C)
@@ -379,7 +383,8 @@ class NoiseInjector:
         """
         return float(rng.uniform(val[0], val[1])) if isinstance(val, (tuple, list)) else float(val)
 
-    def _add_periodic(self, image: np.ndarray, rng: np.random.Generator) -> np.ndarray:
+    def _add_periodic(self, image: np.ndarray,
+                      rng: np.random.Generator) -> np.ndarray:
         """
         Harmonic 2D periodic striped noise: A * sin(2pi * (fx*x + fy*y) + phi).
         """
@@ -399,7 +404,9 @@ class NoiseInjector:
 
         return np.clip(image.astype(np.float32) + stripe, 0, 255).astype(image.dtype)
 
-    def _add_statistical_noise(self, image: np.ndarray, mode: str, rng: np.random.Generator) -> np.ndarray:
+    def _add_statistical_noise(self, image: np.ndarray,
+                               mode: str,
+                               rng: np.random.Generator) -> np.ndarray:
         """
         Add noise using scikit-image primitives and map back to uint8 [0, 255].
         """
@@ -421,7 +428,8 @@ class NoiseInjector:
 
         return (noisy * 255.0).astype(image.dtype)
 
-    def __call__(self, image: np.ndarray, mode: str | None = None,
+    def __call__(self, image: np.ndarray,
+                 mode: str | None = None,
                  rng: np.random.Generator | None = None) -> np.ndarray:
         """
         Inject configured or stochastic noise into the input image patch.
@@ -462,9 +470,14 @@ class StreamPatchDataset(IterableDataset):
      and streams them sequentially without loading the full dataset into RAM.
     """
 
-    def __init__(self, file_paths: list, patch_size: tuple[int, int] = (96, 96), min_overlap: float = 0.0,
-                 shuffle: bool = True, seed: int = -1, is_mixed_color_type: bool = False,
-                 g_augmentor: GeometricAugmentor | None = None, n_augmentor: NoiseInjector | None = None):
+    def __init__(self, file_paths: list,
+                 patch_size: tuple[int, int] = (96, 96),
+                 min_overlap: float = 0.0,
+                 shuffle: bool = True,
+                 seed: int = -1,
+                 is_mixed_color_type: bool = False,
+                 g_augmentor: GeometricAugmentor | None = None,
+                 n_augmentor: NoiseInjector | None = None):
         """
         Initialize the streaming patch dataset.
         :param file_paths: list of image file paths (Path objects or strings)
