@@ -1,7 +1,30 @@
 import cv2
 import torch
-import torch.nn as nn
 import numpy as np
+import torch.nn as nn
+import apps.main as mn
+from torch.utils.data import DataLoader
+from torchmetrics.regression import MeanSquaredError
+
+
+def evaluate_model(model: nn.Module, loader: DataLoader) -> float:
+    """
+    Evaluate model on a DataLoader.
+    """
+    model.eval()
+    device = mn.get_device()
+    model.to(device)
+
+    mse_metric = MeanSquaredError().to(device)
+    with torch.no_grad():
+        for x, y in loader:
+            x = x.to(device)
+            y = y.to(device)
+
+            preds = model(x).contiguous()
+            mse_metric.update(preds, y)
+
+    return mse_metric.compute().item()
 
 
 class GaussianFilter(nn.Module):
@@ -46,7 +69,7 @@ class GaussianFilter(nn.Module):
 
         np_imgs = x.detach().cpu().numpy()
         if is_channels_first:
-            np_imgs = np_imgs.transpose(0, 2, 3, 1)
+            np_imgs = np_imgs.transpose(0, 2, 3, 1).contiguous()
 
         # apply Gaussian filter
         filtered = [cv2.GaussianBlur(img, (self.ksize, self.ksize), self.sigma_x) for img in np_imgs]
@@ -59,7 +82,7 @@ class GaussianFilter(nn.Module):
         # convert back to PyTorch tensor and restore device and dtype
         out_tensor = torch.from_numpy(out_np).to(device=device, dtype=dtype)
         if is_channels_first:
-            out_tensor = out_tensor.permute(0, 3, 1, 2)
+            out_tensor = out_tensor.permute(0, 3, 1, 2).contiguous()
 
         # restore original tensor
         if ndim == 2:
@@ -112,7 +135,7 @@ class MedianFilter(nn.Module):
 
         np_imgs = x.detach().cpu().numpy()
         if is_channels_first:
-            np_imgs = np_imgs.transpose(0, 2, 3, 1)
+            np_imgs = np_imgs.transpose(0, 2, 3, 1).contiguous()
 
         # apply median filter
         filtered = [cv2.medianBlur(img, self.ksize) for img in np_imgs]
@@ -125,7 +148,7 @@ class MedianFilter(nn.Module):
         # convert back to PyTorch tensor and restore device and dtype
         out_tensor = torch.from_numpy(out_np).to(device=device, dtype=dtype)
         if is_channels_first:
-            out_tensor = out_tensor.permute(0, 3, 1, 2)
+            out_tensor = out_tensor.permute(0, 3, 1, 2).contiguous()
 
         # restore original tensor
         if ndim == 2:
@@ -179,7 +202,7 @@ class BilateralFilter(nn.Module):
 
         np_imgs = x.detach().cpu().numpy()
         if is_channels_first:
-            np_imgs = np_imgs.transpose(0, 2, 3, 1)
+            np_imgs = np_imgs.transpose(0, 2, 3, 1).contiguous()
 
         # apply bilateral filter
         filtered = [cv2.bilateralFilter(img, self.d, self.sigma_color, self.sigma_space) for img in np_imgs]
@@ -192,7 +215,7 @@ class BilateralFilter(nn.Module):
         # convert back to PyTorch tensor and restore device and dtype
         out_tensor = torch.from_numpy(out_np).to(device=device, dtype=dtype)
         if is_channels_first:
-            out_tensor = out_tensor.permute(0, 3, 1, 2)
+            out_tensor = out_tensor.permute(0, 3, 1, 2).contiguous()
 
         # restore original tensor
         if ndim == 2:
