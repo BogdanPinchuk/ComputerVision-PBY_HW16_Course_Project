@@ -1,5 +1,6 @@
 import cv2
 import keras
+import torch
 import random
 import numpy as np
 import scipy.fft as sp_fft
@@ -15,6 +16,16 @@ from pandas.io.formats.style import Styler
 from torch.utils.data import IterableDataset
 from skimage.metrics import peak_signal_noise_ratio, structural_similarity
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score, mean_absolute_percentage_error
+
+
+def get_device() -> torch.device:
+    """
+    Detect and return the optimal available PyTorch hardware acceleration device.
+    Priority hierarchy: NVIDIA CUDA -> Apple Silicon MPS -> CPU.
+    :return: torch.device instance configured for the fastest available compute backend
+    """
+    # resolve hardware acceleration backend: cuda -> mps -> cpu
+    return torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
 
 
 def train_test_split_by_order(array,
