@@ -607,3 +607,22 @@ class StreamPatchDataset(IterableDataset):
                         clean_patch = cv2.cvtColor(clean_patch, cv2.COLOR_BGR2RGB)
 
                     yield augmented_patch, clean_patch
+
+
+class HistoryWrapper:
+    """
+    Wrapper for model training history dictionary supporting attribute and dict access.
+    """
+
+    def __init__(self, history_dict: dict):
+        self.history = history_dict
+
+    def __getitem__(self, item):
+        return self.history[item]
+
+    def __contains__(self, item):
+        return item in self.history
+
+    def get(self, item, default=None):
+        return self.history.get(item, default)
+
