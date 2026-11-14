@@ -303,6 +303,132 @@ class TqdmProgressCallback(keras.callbacks.Callback):
             self.pbar.close()
 
 
+class EarlyStopping:
+    """
+    Early stopping handler to terminate neural network training when validation loss stops improving.
+    Preserves and restores the best model parameters across training epochs.
+    """
+
+    def __init__(self, patience: int = 5,
+                 min_delta: float = 1e-4,
+                 mode: str = "min",
+                 restore_best_weights: bool = True):
+        """
+        Initialize EarlyStopping callback handler.
+        :param patience: number of epochs to wait with no improvement before stopping
+        :param min_delta: minimum change in monitored quantity to qualify as an improvement
+        :param mode: optimization direction, one of {"min", "max"}
+        :param restore_best_weights: whether to automatically restore best weights when early stopping triggers
+        """
+        if patience <= 0:
+            raise ValueError("patience must be a positive integer!")
+        if min_delta < 0.0:
+            raise ValueError("min_delta must be non-negative!")
+        if mode not in ("min", "max"):
+            raise ValueError(f"mode must be 'min' or 'max', got {mode}!")
+
+        self.patience = patience
+        self.min_delta = min_delta
+        self.mode = mode
+        self.restore_best_weights = restore_best_weights
+
+        self.counter = 0
+        self.best_loss = float("inf") if mode == "min" else float("-inf")
+        self.best_epoch = 0
+        self.best_weights = None
+        self.early_stop = False
+
+    def step(self, current_loss: float,
+             model: torch.nn.Module,
+             epoch: int | None = None) -> bool:
+        """
+        Evaluate current epoch loss against best tracked performance.
+        :param current_loss: monitored scalar metric (e.g. validation loss)
+        :param model: PyTorch model whose state_dict to clone upon improvement
+        :param epoch: current epoch index (1-based or 0-based for tracking)
+        :return: True if early stopping criteria is triggered, False otherwise
+        """
+        current = float(current_loss)
+        is_improvement = (current < self.best_loss - self.min_delta) if self.mode == "min" else (current > self.best_loss + self.min_delta)
+
+        if is_improvement:
+            self.best_loss = current
+            self.best_epoch = epoch if epoch is not None else 0
+            # clone weights to CPU to avoid VRAM overhead
+            self.best_weights = {k: v.cpu().clone() for k, v in model.state_dict().items()}
+            self.counter = 0
+            return False
+
+        self.counter += 1
+        if self.counter >= self.patience:
+            self.early_stop = True
+            if self.restore_best_weights:
+                self.restore(model)
+            return True
+
+        return False
+
+    def __call__(self, current_loss: float,
+                 model: torch.nn.Module,
+                 epoch: int | None = None) -> bool:
+        """
+        Callable alias for step method.
+        """
+        return self.step(current_loss=current_loss, model=model, epoch=epoch)
+
+    def restore(self, model: torch.nn.Module) -> None:
+        """
+        Restore tracked best weights into model.
+        :param model: PyTorch model to update with best weights
+        """
+        if self.best_weights is not None:
+            model.load_state_dict(self.best_weights)
+
+
+class StudyEarlyStopping:
+    """
+    Early stopping callback for Optuna study to terminate hyperparameter search
+    when monitored objective value stagnates for a specified number of completed trials.
+    """
+
+    def __init__(self, patience: int = 20, min_delta: float = 1e-4, mode: str = "min"):
+        """
+        Initialize StudyEarlyStopping callback handler.
+        :param patience: number of consecutive non-improving completed trials before stopping
+        :param min_delta: minimum change in objective value to qualify as an improvement
+        :param mode: optimization direction, one of {"min", "max"}
+        """
+        if patience <= 0:
+            raise ValueError("patience must be a positive integer!")
+        if min_delta < 0.0:
+            raise ValueError("min_delta must be non-negative!")
+        if mode not in ("min", "max"):
+            raise ValueError(f"mode must be 'min' or 'max', got {mode}!")
+
+        self.patience = patience
+        self.min_delta = min_delta
+        self.mode = mode
+        self.best_value = float("inf") if mode == "min" else float("-inf")
+        self.stagnant_trials = 0
+
+    def __call__(self, study, trial) -> None:
+        """
+        Evaluate trial result and stop study if patience is exceeded.
+        :param study: current Optuna Study instance
+        :param trial: completed or pruned FrozenTrial instance
+        """
+        if getattr(trial.state, "name", str(trial.state)) == "COMPLETE" and trial.value is not None:
+            val = float(trial.value)
+            is_improvement = (val < self.best_value - self.min_delta) if self.mode == "min" else (val > self.best_value + self.min_delta)
+            if is_improvement:
+                self.best_value = val
+                self.stagnant_trials = 0
+            else:
+                self.stagnant_trials += 1
+                if self.stagnant_trials >= self.patience:
+                    study.stop()
+
+
 class GeometricAugmentor:
     """
     Random D4 dihedral symmetry geometric augmentor for 2D patches and images.
