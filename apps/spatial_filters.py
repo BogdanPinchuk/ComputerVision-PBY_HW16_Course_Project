@@ -69,7 +69,7 @@ class GaussianFilter(nn.Module):
 
         np_imgs = x.detach().cpu().numpy()
         if is_channels_first:
-            np_imgs = np_imgs.transpose(0, 2, 3, 1).contiguous()
+            np_imgs = np.ascontiguousarray(np_imgs.transpose(0, 2, 3, 1))
 
         # apply Gaussian filter
         filtered = [cv2.GaussianBlur(img, (self.ksize, self.ksize), self.sigma_x) for img in np_imgs]
@@ -135,7 +135,7 @@ class MedianFilter(nn.Module):
 
         np_imgs = x.detach().cpu().numpy()
         if is_channels_first:
-            np_imgs = np_imgs.transpose(0, 2, 3, 1).contiguous()
+            np_imgs = np.ascontiguousarray(np_imgs.transpose(0, 2, 3, 1))
 
         # apply median filter
         filtered = [cv2.medianBlur(img, self.ksize) for img in np_imgs]
@@ -202,7 +202,7 @@ class BilateralFilter(nn.Module):
 
         np_imgs = x.detach().cpu().numpy()
         if is_channels_first:
-            np_imgs = np_imgs.transpose(0, 2, 3, 1).contiguous()
+            np_imgs = np.ascontiguousarray(np_imgs.transpose(0, 2, 3, 1))
 
         # apply bilateral filter
         filtered = [cv2.bilateralFilter(img, self.d, self.sigma_color, self.sigma_space) for img in np_imgs]
