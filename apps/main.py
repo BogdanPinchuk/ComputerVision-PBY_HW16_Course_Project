@@ -13,7 +13,7 @@ from pandas import Series, DataFrame
 from skimage.util import random_noise
 from IPython.core.display import Markdown
 from pandas.io.formats.style import Styler
-from torch.utils.data import IterableDataset
+from torch.utils.data import IterableDataset, DataLoader
 from skimage.metrics import peak_signal_noise_ratio, structural_similarity
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score, mean_absolute_percentage_error
 
@@ -240,6 +240,18 @@ def calculate_metrics(original_image: np.ndarray,
         rp.print_pd_report(caption)
 
     return df
+
+
+def reset_loader(loader: DataLoader, seed: int | None = None) -> None:
+    """
+    Safely reset pseudo-random state of the underlying dataset inside a DataLoader.
+    Immune to importlib.reload class identity desynchronization.
+    :param loader: PyTorch DataLoader containing a streaming or map-style dataset
+    :param seed: optional pseudo-random seed to reinitialize generator with
+    """
+    dataset = getattr(loader, "dataset", None)
+    if dataset is not None and hasattr(dataset, "reset_seed"):
+        dataset.reset_seed(seed)
 
 
 class TqdmProgressCallback(keras.callbacks.Callback):
@@ -521,8 +533,10 @@ class StreamPatchDataset(IterableDataset):
         Iterate over image files, slice them into patches, and yield individual patches.
         :return: generator yielding individual cropped patches as numpy ndarrays
         """
-        # shuffle paths
-        if self.shuffle:
+        # auto-reset PRNG state on each pass for deterministic evaluation (shuffle == False)
+        if not self.shuffle and self.seed > -1:
+            self.reset_seed(self.seed)
+        elif self.shuffle:
             self.rng.shuffle(self.file_paths)
 
         # processing each path
