@@ -254,6 +254,21 @@ def reset_loader(loader: DataLoader, seed: int | None = None) -> None:
         dataset.reset_seed(seed)
 
 
+def get_loader_channels(loader: DataLoader) -> int:
+    """
+    Dynamically extract the number of image channels from a PyTorch DataLoader.
+    :param loader: PyTorch DataLoader containing a streaming or map-style dataset
+    :return: 1 for single-channel grayscale or C for multi-channel images
+    """
+    dataset = getattr(loader, "dataset", None)
+    if dataset is not None and hasattr(dataset, "channels"):
+        return dataset.channels
+    sample_batch, _ = next(iter(loader))
+    if sample_batch.ndim == 4:
+        return int(sample_batch.shape[1] if sample_batch.shape[1] in (1, 3) else sample_batch.shape[-1])
+    return 1
+
+
 class TqdmProgressCallback(keras.callbacks.Callback):
     def __init__(self, total_epochs=None):
         super().__init__()
@@ -512,6 +527,18 @@ class StreamPatchDataset(IterableDataset):
         # set seed of the random
         self.seed = seed
         self.rng = np.random.default_rng(seed if seed > -1 else None)
+
+    @property
+    def channels(self) -> int:
+        """
+        Dynamically determine the number of image channels streamed by the dataset.
+        """
+        if self.is_mixed_color_type:
+            return 3
+        if len(self.file_paths) == 0:
+            return 3
+        sample = cv2.imread(str(self.file_paths[0]), cv2.IMREAD_UNCHANGED)
+        return 3 if (sample is not None and sample.ndim == 3) else 1
 
     def reset_seed(self, seed: int | None = None) -> None:
         """
