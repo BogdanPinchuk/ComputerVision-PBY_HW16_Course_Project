@@ -1,0 +1,8 @@
+{
+    "base_channels": 48,
+    "activation": "elu",
+    "lr": 0.001,
+    "loss_ssim_weight": 0.15,
+    "in_channels": 3,
+    "weight_decay": 0.0001
+}
