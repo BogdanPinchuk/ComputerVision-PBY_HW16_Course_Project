@@ -223,13 +223,13 @@ def calculate_metrics(original_image: np.ndarray,
 
     # R2 - coefficient of determination
     r2 = r2_score(original_flat, changed_flat)
-    rp.add_item(f"R²\n(coefficient of determination)", rp.format_value(r2))
+    rp.add_item(f"R² (coefficient of determination)", rp.format_value(r2))
 
     # Mean Absolute Percentage Error
     non_zero_mask = original_flat > 0
     if np.any(non_zero_mask):
         mape = mean_absolute_percentage_error(original_flat[non_zero_mask], changed_flat[non_zero_mask])
-        rp.add_item("MAPE\n(excluded zero values)", rp.format_value(mape))
+        rp.add_item("MAPE (excluded zero values)", rp.format_value(mape))
     else:
         rp.add_item("MAPE\n(excluded zero values)", "N/A")
 
