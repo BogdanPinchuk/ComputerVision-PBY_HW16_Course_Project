@@ -9,8 +9,9 @@ from torchmetrics.regression import MeanSquaredError
 
 def evaluate_model(model: nn.Module, loader: DataLoader) -> float:
     """
-    Evaluate model on a DataLoader.
+    Evaluate model on a DataLoader with automated deterministic dataset reset.
     """
+    mn.reset_loader(loader)
     model.eval()
     device = mn.get_device()
     model.to(device)
