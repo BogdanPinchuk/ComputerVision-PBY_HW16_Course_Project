@@ -511,6 +511,10 @@ class StreamPatchDataset(IterableDataset):
         self.rng = np.random.default_rng(self.seed if self.seed > -1 else None)
         # reset list of paths
         self.file_paths = self.initial_file_paths.copy()
+        if self.geom_augmentor is not None and hasattr(self.geom_augmentor, "reset_seed"):
+            self.geom_augmentor.reset_seed(self.seed)
+        if self.noise_augmentor is not None and hasattr(self.noise_augmentor, "reset_seed"):
+            self.noise_augmentor.reset_seed(self.seed)
 
     def __iter__(self):
         """
