@@ -173,6 +173,11 @@ class CompositeLoss(nn.Module):
         p = preds.float() / 255.0 if preds.dtype == torch.uint8 else (preds / 255.0 if preds.max() > 1.0 else preds)
         t = targets.float() / 255.0 if targets.dtype == torch.uint8 else (targets / 255.0 if targets.max() > 1.0 else targets)
 
+        if self.ssim.device != p.device:
+            self.to(p.device)
+        if t.device != p.device:
+            t = t.to(p.device)
+
         loss_mse = self.mse(p, t) * self.scale
         loss_ssim = 1.0 - self.ssim(p, t)
         return self.alpha * loss_mse + self.beta * loss_ssim
