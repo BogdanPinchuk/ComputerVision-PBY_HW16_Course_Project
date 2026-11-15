@@ -1,0 +1,13 @@
+{
+    "grid_size": 4,
+    "base_channels": 64,
+    "activation": "elu",
+    "lr": 0.0001,
+    "loss_ssim_weight": 0.15,
+    "in_channels": 3,
+    "weight_decay": 0.0001,
+    "smooth_initialization": true,
+    "learnable_phase": true,
+    "learnable_omega": true,
+    "base_branch": true
+}
