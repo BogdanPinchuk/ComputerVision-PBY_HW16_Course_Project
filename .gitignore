@@ -11,3 +11,8 @@
 /.idea/vcs.xml
 /resources/data/keras.json
 .DS_Store
+
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/

@@ -98,8 +98,10 @@ Summary of restoration performance evaluated across 68 full-resolution images fr
 
 ```
 ComputerVision-PBY_HW16_Course_Project/
+├── Bohdan_Pinchuk_CV_HW16.ipynb      # Master interactive research notebook (English)
 ├── Bohdan_Pinchuk_CV_HW16_UA.ipynb   # Master interactive research notebook (Ukrainian)
 ├── README.md                         # Project documentation and benchmark manifest (English)
+├── README_UA.md                      # Project documentation and benchmark manifest (Ukrainian)
 ├── .gitignore                        # Git exclusion rules for large datasets and weights
 ├── apps/                             # Modular engineering architecture
 │   ├── main.py                       # Device management, data loaders, composite loss & metrics
@@ -158,9 +160,13 @@ source .venv/bin/activate
 pip install -r requirements.txt  # torch torchvision torchaudio optuna opencv-python matplotlib scipy pandas
 ```
 
-### 2. Running the Research Notebook
-Launch Jupyter Lab or PyCharm:
+### 2. Running the Research Notebooks
+Launch Jupyter Lab or PyCharm (both English and Ukrainian notebooks are 100% synchronized):
 ```bash
+# English version
+jupyter lab Bohdan_Pinchuk_CV_HW16.ipynb
+
+# Ukrainian version
 jupyter lab Bohdan_Pinchuk_CV_HW16_UA.ipynb
 ```
 
