@@ -349,7 +349,8 @@ class EarlyStopping:
         :return: True if early stopping criteria is triggered, False otherwise
         """
         current = float(current_loss)
-        is_improvement = (current < self.best_loss - self.min_delta) if self.mode == "min" else (current > self.best_loss + self.min_delta)
+        is_improvement = (current < self.best_loss - self.min_delta) if self.mode == "min" else (
+                current > self.best_loss + self.min_delta)
 
         if is_improvement:
             self.best_loss = current
@@ -419,7 +420,8 @@ class StudyEarlyStopping:
         """
         if getattr(trial.state, "name", str(trial.state)) == "COMPLETE" and trial.value is not None:
             val = float(trial.value)
-            is_improvement = (val < self.best_value - self.min_delta) if self.mode == "min" else (val > self.best_value + self.min_delta)
+            is_improvement = (val < self.best_value - self.min_delta) if self.mode == "min" else (
+                    val > self.best_value + self.min_delta)
             if is_improvement:
                 self.best_value = val
                 self.stagnant_trials = 0
@@ -498,6 +500,7 @@ class NoiseInjector:
     """
 
     STATISTICAL_MODES = ('gaussian', 'salt_and_pepper', 'speckle', 'poisson')
+    UNIQUE_MODES =  ('gaussian', 'salt_and_pepper', 'speckle', 'poisson', 'periodic')
     AVAILABLE_MODES = ('gaussian', 'salt_and_pepper', 'speckle', 'poisson', 'periodic', 'hybrid', 'clean')
 
     def __init__(self, mode: str = 'random',
