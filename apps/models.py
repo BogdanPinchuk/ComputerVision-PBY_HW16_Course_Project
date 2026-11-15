@@ -208,7 +208,7 @@ class ComplexExpFourierConvKAN2D(nn.Module):
                  activation_name: str = "silu",
                  smooth_initialization: bool = True,
                  learnable_phase: bool = True,
-                 learnable_omega: bool = False,
+                 learnable_omega: bool = True,
                  base_branch: bool = True,
                  add_bias: bool = True):
         super().__init__()
@@ -343,7 +343,7 @@ class FourierKANBlock(nn.Module):
                  activation_name: str = "silu",
                  smooth_initialization: bool = True,
                  learnable_phase: bool = True,
-                 learnable_omega: bool = False,
+                 learnable_omega: bool = True,
                  base_branch: bool = True):
         super().__init__()
         self.block = nn.Sequential(
@@ -381,7 +381,7 @@ class FourierKANAutoencoder(nn.Module):
                  activation: str = "silu",
                  smooth_initialization: bool = True,
                  learnable_phase: bool = True,
-                 learnable_omega: bool = False,
+                 learnable_omega: bool = True,
                  base_branch: bool = True):
         super().__init__()
         c = base_channels
