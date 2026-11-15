@@ -1,5 +1,4 @@
 import cv2
-import keras
 import torch
 import random
 import numpy as np
@@ -174,6 +173,35 @@ def calculate_fft_spectrum(image: np.ndarray,
     return log_amplitudes, raw_amplitudes, phases, (freq_y, freq_x)
 
 
+def calculate_radial_power_spectrum(image: np.ndarray,
+                                    workers: int = -1) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Compute radially averaged 1D Power Spectrum Density (RPSD) from 2D Fast Fourier Transform.
+    Integrates concentric frequency rings to analyze frequency energy preservation
+    and noise floor decay across spatial frequencies from 0 (DC) to 0.5 (Nyquist).
+    :param image: input image as 2D (H, W) or 3D (H, W, C) numpy ndarray
+    :param workers: number of parallel CPU worker threads (-1 for all cores)
+    :return: (normalized_frequencies, radial_power_profile) where normalized_frequencies is in [0, 0.5] cycles/pixel
+    """
+    _, raw_amplitudes, _, _ = calculate_fft_spectrum(image, workers=workers)
+    power_spectrum = raw_amplitudes ** 2
+    h, w = power_spectrum.shape
+    cy, cx = h // 2, w // 2
+    y, x = np.ogrid[:h, :w]
+    r = np.sqrt((x - cx) ** 2 + (y - cy) ** 2)
+    max_r = int(min(cy, cx))
+    r_int = r.astype(int)
+
+    radial_profile = np.zeros(max_r, dtype=np.float32)
+    for radius in range(max_r):
+        mask = (r_int == radius)
+        if np.any(mask):
+            radial_profile[radius] = np.mean(power_spectrum[mask])
+
+    normalized_frequencies = np.linspace(0.0, 0.5, max_r, endpoint=False, dtype=np.float32)
+    return normalized_frequencies, radial_profile
+
+
 def calculate_metrics(original_image: np.ndarray,
                       changed_image: np.ndarray,
                       data_range: float = 255.0,
@@ -269,34 +297,7 @@ def get_loader_channels(loader: DataLoader) -> int:
     return 1
 
 
-class TqdmProgressCallback(keras.callbacks.Callback):
-    def __init__(self, total_epochs=None):
-        super().__init__()
-        self.total_epochs = total_epochs
-        self.pbar = None
 
-    def on_train_begin(self, logs=None):
-        self.pbar = tqdm(total=self.total_epochs, desc="Total training", leave=True)
-
-    def on_epoch_end(self, epoch, logs=None):
-        logs = logs or {}
-        loss = float(logs.get('loss', 0.0))
-        acc = float(logs.get('accuracy', 0.0))
-        status = float((epoch + 1.0) / self.total_epochs)
-        self.pbar.write(f"Epoch: {epoch + 1}, Loss: {loss:.4f}, Accuracy: {acc:.4f}, Status: {status:.2%}")
-        self.pbar.update(1)
-
-    def on_train_end(self, logs=None):
-        if self.pbar:
-            self.pbar.close()
-
-    def on_predict_begin(self, logs=None):
-        total_steps = self.params.get('steps', None)
-        self.pbar = tqdm(total=total_steps, desc="Predicting", leave=True)
-
-    def on_predict_batch_end(self, batch, logs=None):
-        if self.pbar:
-            self.pbar.update(1)
 
     def on_predict_end(self, logs=None):
         if self.pbar:
