@@ -7,7 +7,7 @@
 [![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c?logo=pytorch&logoColor=white)](https://pytorch.org/)
 [![Hardware Acceleration](https://img.shields.io/badge/Acceleration-Apple%20Silicon%20MPS-black?logo=apple&logoColor=white)](https://developer.apple.com/metal/pytorch/)
-[![Benchmark](https://img.shields.io/badge/Benchmark-BSD68%20%7C%20Set12-success)](https://github.com/liutianlin0121/BSD-432-68)
+[![Benchmark](https://img.shields.io/badge/Benchmark-BSD68-success)](https://github.com/liutianlin0121/BSD-432-68)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 Computer Vision Course Project (Topic 2: *Intelligent Image Denoising based on Autoencoders*).  
@@ -24,7 +24,7 @@ The primary objective of this project is to conduct a systematic, end-to-end inv
 2. **Deep Learning Convolutional Baseline (CAE):** A 5-level symmetric Convolutional Autoencoder with reflection padding and skip connections, trained with a scale-balanced composite loss ($0.85 L_1 + 0.15 (1 - \text{SSIM})$).
 3. **Novel Spectral Model (Fourier KAN Autoencoder):** A Kolmogorov-Arnold Network autoencoder employing learnable complex-exponential trigonometric Fourier harmonics along edges, stabilized via Sobolev spectral decay ($\sigma_k \propto 1/k^2$), learnable spatial phase shifts $\phi_k$, adaptive frequency scales $\omega_k$, and a residual SiLU highway.
 
-All models undergo rigorous benchmarking across 6 noise modalities on the standard **BSD68** and **Set12** datasets, evaluating restoration fidelity ($\text{PSNR}$, $\text{SSIM}$, $\text{MAE}$, $\text{LPIPS}$), inference latency, and parameter footprint.
+All models undergo rigorous benchmarking on the standard **BSD68** dataset, evaluating restoration fidelity ($\text{PSNR}$, $\text{SSIM}$, $\text{MAE}$, $\text{MSE}$, $R^2$), inference latency, and parameter footprint, while noise robustness across 6 modalities is investigated in multi-modal experiments.
 
 ---
 
@@ -32,7 +32,7 @@ All models undergo rigorous benchmarking across 6 noise modalities on the standa
 
 ```mermaid
 flowchart LR
-    S1["1. EDA & Data Audit<br/>(BSD68, Set12, Stats)"] --> S2["2. Noise Engine<br/>(6 Modalities, 2D FFT)"]
+    S1["1. EDA & Data Audit<br/>(BSD432, BSD68, Stats)"] --> S2["2. Noise Engine<br/>(6 Modalities, 2D FFT)"]
     S2 --> S3["3. Classical Baselines<br/>(Gaussian, Median, Bilateral)"]
     S3 --> S4["4. Deep CAE Baseline<br/>(Conv Autoencoder, Optuna)"]
     S4 --> S5["5. Novel Fourier KAN<br/>(Spectral KAN, Sobolev Reg)"]
@@ -41,7 +41,7 @@ flowchart LR
     S7 --> S8["8. Synthesis & Decisions<br/>(Deployment Matrix)"]
 ```
 
-1. **EDA & Data Ingestion:** Dynamic inspection of 68 natural grayscale/RGB images from BSD68, verifying intensity ranges $[0, 255]$, dynamic ranges, and patch distributions.
+1. **EDA & Data Ingestion:** Comprehensive analysis of BSD432 (training) and BSD68 (evaluation benchmark) datasets, dynamic range $[0, 255]$ verification, luminance profiling, and streaming train/val patch generation ($96 \times 96$).
 2. **Multi-Modal Synthetic Noise Engine:** Procedural generation of 6 synthetic corruptions:
    - Additive White Gaussian Noise (AWGN, $\sigma \in [10, 50]$).
    - Impulse Salt & Pepper Noise ($p \in [0.02, 0.15]$).
@@ -104,23 +104,26 @@ ComputerVision-PBY_HW16_Course_Project/
 ├── README_UA.md                      # Project documentation and benchmark manifest (Ukrainian)
 ├── .gitignore                        # Git exclusion rules for large datasets and weights
 ├── apps/                             # Modular engineering architecture
-│   ├── main.py                       # Device management, data loaders, composite loss & metrics
-│   ├── models.py                     # Implementations: Classical filters, CAE, Fourier KAN
-│   ├── visualizer.py                 # 150 DPI publication plots, residual maps, RPSD curves
+│   ├── main.py                       # Device management, streaming datasets, augmentations, losses & metrics
+│   ├── models.py                     # Implementations: CAE, Fourier KAN, composite SSIM+L1 loss
+│   ├── spatial_filters.py            # Classical spatial baselines: Gaussian, Median, Bilateral
 │   └── reporter.py                   # Structured tabular Pandas reporting utilities
 └── resources/
-    ├── data/                         # BSD68 & Set12 benchmark images, patch caches
-    │   ├── train/                    # 128x128 training patches
-    │   ├── val/                      # Validation split patches
-    │   └── test/                     # 68 full-resolution BSD68 test images
-    └── models/                       # Checkpoints, parameter manifests, and Optuna studies
+    ├── data/                         # BSD (Berkeley Segmentation Dataset) image corpora
+    │   ├── BSD432/                   # 432 monochrome training images
+    │   ├── CBSD432/                  # 432 color RGB training images
+    │   ├── BSD68/                    # 68 monochrome evaluation benchmark images
+    │   └── CBSD68/                   # 68 color RGB evaluation benchmark images
+    ├── models/                       # Checkpoints, parameter manifests, and Optuna studies
         ├── model_gaussian.json       # Optimal Gaussian filter kernel & sigma
         ├── model_median.json         # Optimal Median filter kernel size
         ├── model_bilateral.json      # Optimal Bilateral filter spatial & range sigmas
-        ├── model_cae.pth             # Trained PyTorch weights for Convolutional Autoencoder
-        ├── model_cae_params.json     # Hyperparameters for CAE baseline
-        ├── model_fourier_kan.pth     # Trained PyTorch weights for Fourier KAN Autoencoder
-        └── model_fourier_kan_params.json # Hyperparameters for Fourier KAN model
+        ├── model_cae.pth             # Trained PyTorch weights for Convolutional Autoencoder (1.05M)
+        ├── model_cae_params.json     # Best Optuna hyperparameters for CAE baseline
+        ├── model_fourier_kan.pth     # Trained PyTorch weights for Fourier KAN Autoencoder (7.78M)
+        └── model_fourier_kan_params.json # Best Optuna hyperparameters for Fourier KAN model
+    └── reports/                      # Visual benchmarks and performance plots
+        └── denoising_master_benchmark.png # Master benchmark comparison chart
 ```
 
 ---
