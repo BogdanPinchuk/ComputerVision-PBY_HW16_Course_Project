@@ -7,6 +7,7 @@
 [![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c?logo=pytorch&logoColor=white)](https://pytorch.org/)
 [![Апаратне прискорення](https://img.shields.io/badge/Прискорення-Apple%20Silicon%20MPS-black?logo=apple&logoColor=white)](https://developer.apple.com/metal/pytorch/)
+[![Тренування](https://img.shields.io/badge/Тренування-BSD432-informational)](https://github.com/liutianlin0121/BSD-432-68)
 [![Бенчмарк](https://img.shields.io/badge/Бенчмарк-BSD68-success)](https://github.com/liutianlin0121/BSD-432-68)
 [![Ліцензія](https://img.shields.io/badge/Ліцензія-MIT-green.svg)](LICENSE)
 
@@ -185,8 +186,3 @@ jupyter lab Bohdan_Pinchuk_CV_HW16.ipynb
 ```
 
 Кожен етап структуровано за блоками `# Input data`, `# Solution` та `# Report` із підтримкою автозавантаження збережених моделей (`load_model = True`). Збережені контрольні точки в `resources/models/` завантажуються миттєво; встановлення `load_model = False` активує повний цикл повторного навчання та оптимізації Optuna.
-
----
-
-## ⚖️ Ліцензія
-Проєкт розповсюджується під ліцензією MIT — детальніше див. файл [LICENSE](LICENSE).

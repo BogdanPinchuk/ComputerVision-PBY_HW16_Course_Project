@@ -7,6 +7,7 @@
 [![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c?logo=pytorch&logoColor=white)](https://pytorch.org/)
 [![Hardware Acceleration](https://img.shields.io/badge/Acceleration-Apple%20Silicon%20MPS-black?logo=apple&logoColor=white)](https://developer.apple.com/metal/pytorch/)
+[![Training](https://img.shields.io/badge/Training-BSD432-informational)](https://github.com/liutianlin0121/BSD-432-68)
 [![Benchmark](https://img.shields.io/badge/Benchmark-BSD68-success)](https://github.com/liutianlin0121/BSD-432-68)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
@@ -185,8 +186,3 @@ jupyter lab Bohdan_Pinchuk_CV_HW16_UA.ipynb
 ```
 
 Each stage is organized into `# Input data`, `# Solution`, and `# Report` sections with automatic cache detection (`load_model = True`). Pre-computed weights in `resources/models/` will load instantaneously; setting `load_model = False` triggers full retraining and Optuna hyperparameter tuning.
-
----
-
-## ⚖️ License
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
