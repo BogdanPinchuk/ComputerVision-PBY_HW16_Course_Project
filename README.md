@@ -10,21 +10,21 @@
 [![Benchmark](https://img.shields.io/badge/Benchmark-BSD68-success)](https://github.com/liutianlin0121/BSD-432-68)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-Computer Vision Course Project (Topic 2: *Intelligent Image Denoising based on Autoencoders*).  
+Computer Vision Course Project (Topic 2: *«Intelligent Image Denoising based on Autoencoders»*).  
 Author: **Bohdan Pinchuk**
 
 ---
 
 ## 📌 Project Overview & Motivation
 
-Image restoration and denoising remain foundational challenges in low-level computer vision. Digital sensors inevitably introduce corruptions during acquisition under low-light conditions, high ISO, transmission degradation, and sensor heating.
+Digital image restoration (*Image Denoising*) is a foundational problem in low-level computer vision. Physical sensors inevitably introduce corruptions during acquisition under low-light conditions, high ISO settings, sensor thermal noise, and transmission channel degradation.
 
-The primary objective of this project is to conduct a systematic, end-to-end investigation across three fundamentally distinct denoising paradigms:
-1. **Classical Spatial Filtering (Zero-Learning Baselines):** Gaussian filter (mandatory course baseline), Median filter, and Bilateral edge-preserving filter.
-2. **Deep Learning Convolutional Baseline (CAE):** A 5-level symmetric Convolutional Autoencoder with reflection padding and skip connections, trained with a scale-balanced composite loss ($0.85 L_1 + 0.15 (1 - \text{SSIM})$).
-3. **Novel Spectral Model (Fourier KAN Autoencoder):** A Kolmogorov-Arnold Network autoencoder employing learnable complex-exponential trigonometric Fourier harmonics along edges, stabilized via Sobolev spectral decay ($\sigma_k \propto 1/k^2$), learnable spatial phase shifts $\phi_k$, adaptive frequency scales $\omega_k$, and a residual SiLU highway.
+The primary objective of this project is to conduct a systematic, end-to-end comparative study across three conceptually distinct denoising paradigms:
+1. **Classical Spatial Filtering (Zero-Learning Baselines):** Gaussian filter (mandatory baseline), Median rank filter, and Bilateral edge-preserving filter.
+2. **Deep Learning Convolutional Baseline (CAE):** A 5-stage symmetric Convolutional Autoencoder with reflection padding, skip connections, and a scale-balanced composite loss ($0.85 L_1 + 0.15 (1 - \text{SSIM})$).
+3. **Novel Spectral Model (Fourier KAN Autoencoder):** A Kolmogorov-Arnold Network autoencoder employing learnable complex-exponential trigonometric Fourier harmonics along connection edges, stabilized via Sobolev spectral decay ($\sigma_k \propto 1/k^2$), adaptive phase offsets $\phi_k$, frequency scales $\omega_k$, and a residual SiLU highway.
 
-All models undergo rigorous benchmarking on the standard **BSD68** dataset, evaluating restoration fidelity ($\text{PSNR}$, $\text{SSIM}$, $\text{MAE}$, $\text{MSE}$, $R^2$), inference latency, and parameter footprint, while noise robustness across 6 modalities is investigated in multi-modal experiments.
+All models undergo rigorous evaluation on the benchmark **BSD68** dataset, assessing restoration fidelity ($\text{PSNR}$, $\text{SSIM}$, $\text{MAE}$, $\text{MSE}$, $R^2$), hardware inference latency, and memory footprint, while robustness across 6 noise modalities is evaluated in multi-modal experiments.
 
 ---
 
@@ -41,58 +41,68 @@ flowchart LR
     S7 --> S8["8. Synthesis & Decisions<br/>(Deployment Matrix)"]
 ```
 
-1. **EDA & Data Ingestion:** Comprehensive analysis of BSD432 (training) and BSD68 (evaluation benchmark) datasets, dynamic range $[0, 255]$ verification, luminance profiling, and streaming train/val patch generation ($96 \times 96$).
+1. **EDA & Data Ingestion:** Systematic analysis of BSD432 (training) and BSD68 (evaluation benchmark) datasets, dynamic range $[0, 255]$ verification, luminance profiling, and streaming train/val patch generation ($96 \times 96$).
 2. **Multi-Modal Synthetic Noise Engine:** Procedural generation of 6 synthetic corruptions:
    - Additive White Gaussian Noise (AWGN, $\sigma \in [10, 50]$).
    - Impulse Salt & Pepper Noise ($p \in [0.02, 0.15]$).
    - Multiplicative Speckle Noise ($\text{Var} \in [0.04, 0.20]$).
    - Signal-dependent Poisson Noise ($\lambda \in [10, 50]$).
    - Periodic 2D Sinusoidal Striped Noise (simulating sensor grid interference).
-   - Hybrid Composite Corruption (Gaussian + Impulse + Periodic).
-3. **Classical Spatial Baselines:** Parameter grid tuning and evaluation for Gaussian blur, Median rank filter, and Bilateral range/spatial filter.
-4. **Convolutional Autoencoder (CAE Baseline):** 5-stage CNN with Strided Convolutions / Transposed Convolutions, Reflection Padding, LeakyReLU/SiLU activations, and Optuna hyperparameter tuning.
-5. **Novel Spectral Model (Fourier KAN Autoencoder):** Formulation of complex exponential 2D convolution layers with Fourier series basis expansion, Sobolev weight attenuation, and Bayesian optimization via Optuna.
-6. **Master Multi-Model Benchmark:** Comparative evaluation matrix across all 5 models under identical hardware conditions (Apple Silicon MPS).
-7. **Spatial & Spectral Error Diagnostics:** Local residual error heatmaps (`inferno` colormap) and 2D FFT Radial Power Spectral Density (RPSD) curves to quantify high-frequency texture preservation vs. noise attenuation.
-8. **Engineering Synthesis & Deployment Matrix:** Multi-criteria decision trade-offs balancing visual fidelity, hardware latency, and memory footprint.
+   - Hybrid Composite Corruption (AWGN + Impulse + Periodic).
+3. **Classical Spatial Baselines:** Parameter grid search and evaluation for Gaussian blur, Median rank filter, and Bilateral edge-preserving filter.
+4. **Convolutional Autoencoder (CAE Baseline):** 5-stage CNN with Strided/Transposed Convolutions, Reflection Padding, and Optuna hyperparameter optimization trained with AdamW.
+5. **Novel Spectral Model (Fourier KAN Autoencoder):** Complex-exponential 2D KAN convolutions, Sobolev weight initialization, and Bayesian hyperparameter optimization via Optuna.
+6. **Master Multi-Model Benchmark:** Direct comparative evaluation across all 5 models under identical hardware conditions (Apple Silicon MPS).
+7. **Spatial & Spectral Error Diagnostics:** Local residual error heatmaps (`inferno` colormap) and 2D FFT Radial Power Spectral Density (RPSD) curves to quantify high-frequency detail retention vs. noise floor suppression.
+8. **Engineering Synthesis & Deployment Matrix:** Multi-criteria trade-off analysis balancing visual fidelity, hardware latency, and storage footprint.
 
 ---
 
 ## 📊 Master Benchmark Results (BSD68 Dataset)
 
-Summary of restoration performance evaluated across 68 full-resolution images from the benchmark test set:
+Summary of restoration performance evaluated across 68 full-resolution images from the BSD68 benchmark test set:
 
 | Model Architecture | Model Family | PSNR (dB) ↑ | SSIM ↑ | MSE ↓ | MAE ↓ | R² ↑ | Inference Latency ↓ | Parameters (M) ↓ | Storage Footprint ↓ |
 |:---|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **Gaussian Filter** *(Baseline)* | Classical Spatial | 26.23 dB | 0.6815 | 365.62 | 11.52 | 0.8233 | **0.5 ms** (CPU) | **0.00 M** | **0.00 MB** |
-| **Median Filter** | Classical Spatial | 25.51 dB | 0.7173 | 260.78 | 10.73 | 0.8842 | **0.5 ms** (CPU) | **0.00 M** | **0.00 MB** |
-| **Bilateral Filter** | Classical Spatial | 25.49 dB | 0.6950 | 396.95 | 11.57 | 0.8099 | 1.3 ms (CPU) | **0.00 M** | **0.00 MB** |
-| **Convolutional Autoencoder (CAE)** | Deep CNN Baseline | 28.09 dB | 0.8602 | 155.90 | 8.85 | 0.9274 | 13.1 ms (MPS) | 1.05 M | 4.01 MB |
-| **Fourier KAN Autoencoder** | Novel Spectral Model | **29.91 dB** | **0.8749** | **138.44** | **7.83** | **0.9341** | 104.5 ms (MPS) | 7.78 M | 29.70 MB |
+| **Gaussian Filter** *(Baseline)* | Classical Spatial | 26.23 dB | 0.6815 | 365.62 | 11.52 | 0.8233 | 1.1 ms (CPU) | **0.00 M** | **0.00 MB** |
+| **Median Filter** | Classical Spatial | 25.51 dB | 0.7173 | 260.78 | 10.73 | 0.8842 | **0.9 ms** (CPU) | **0.00 M** | **0.00 MB** |
+| **Bilateral Filter** | Classical Spatial | 25.49 dB | 0.6950 | 396.95 | 11.57 | 0.8099 | 2.2 ms (CPU) | **0.00 M** | **0.00 MB** |
+| **Convolutional Autoencoder (CAE)** | Deep CNN Baseline | 28.09 dB | 0.8602 | 155.90 | 8.85 | 0.9274 | 13.0 ms (MPS) | 1.05 M | 4.01 MB |
+| **Fourier KAN Autoencoder** | Novel Spectral Model | **29.91 dB** | **0.8749** | **138.44** | **7.83** | **0.9341** | 107.5 ms (MPS) | 7.78 M | 29.70 MB |
 
 > [!NOTE]
-> *Metrics represent evaluation across all 68 full-resolution benchmark images of BSD68 under 5 synthetic noise types (AWGN, Poisson, Speckle, Salt & Pepper, Periodic). Classical spatial filters run natively on multi-threaded CPU; deep learning models run on Apple Silicon MPS.*
+> *Metrics represent evaluation across all 68 full-resolution benchmark images of BSD68 under 5 synthetic noise types (AWGN, Poisson, Speckle, Salt & Pepper, Periodic). Classical spatial filters execute on multi-threaded CPU; deep neural networks run on Apple Silicon MPS.*
 
 ---
 
 ## 💡 Key Findings & Engineering Insights
 
-1. **Spectral Fidelity & Harmonic Functional Capacity:**
+1. **Architectural Triad & Denoising Quality Hierarchy:**
    - **Fourier KAN** achieves unequivocal leadership in structural reconstruction fidelity ($\text{PSNR} = \mathbf{29.91\text{ dB}}$, an improvement of **$+1.82\text{ dB}$** over CAE and **$+3.68\text{ dB}$** over Gaussian; $\text{SSIM} = \mathbf{0.8749}$, an improvement of **$+0.0147$** over CAE and **$+0.1934$** over Gaussian). Reconstruction error $\text{MSE} = 138.44$ (**$-11.2\%$** lower than CAE's $155.90$), $\text{MAE} = 7.83$ (**$-11.5\%$** lower than CAE's $8.85$), $R^2 = 0.9341$.
-   - Bayesian hyperparameter optimization with Optuna (`TPESampler`) recorded a **$-23.67\%$** reduction in validation $\text{CompositeLoss}$ ($0.2205$ vs $0.2888$ for CAE), while the final training validation loss reached $0.05856$ (a **$-32.1\%$** reduction vs $0.0862$ for CAE). Leveraging $K=4$ harmonic orders and $64$ base channels ($7.78\text{ M}$ parameters, $29.70\text{ MB}$), the architecture completely eliminates Spectral Bias, preserving crisp contours without watercolor-like blurring. For constrained edge deployments, harmonic orders and channel width can be dynamically scaled ($K=2..3, C=24 \to \sim 0.9\text{M}$) for ultra-low memory footprints.
-   - Learnable trigonometric kernels act as adaptive continuous harmonic interpolators along edges, eliminating the rigid discrete receptive field constraints of standard CNN kernels.
+   - **Convolutional Autoencoder (CAE)** establishes a high-quality deep learning baseline ($\text{PSNR} = 28.09\text{ dB}$, $\text{SSIM} = 0.8602$), significantly outperforming spatial filters, though exhibiting slight oversmoothing across high-frequency textures.
+   - **Classical spatial filters** define the baseline performance level: Gaussian ($26.23\text{ dB}$, $0.6815$), Median ($25.51\text{ dB}$, $0.7173$, uncontested leader for impulse noise), and Bilateral ($25.49\text{ dB}$, $0.6950$).
 
-2. **Sobolev Regularization & High-Frequency Noise Memorization:**
-   - Standard random initialization on Fourier harmonics causes rapid noise memorization and severe Gibbs ringing artifacts around sharp contours.
-   - Enforcing Sobolev decay ($\sigma_k \propto 1/k^2$) constrains initial energy to low-frequency structural representations, ensuring smooth convergence and clean texture recovery.
+2. **Spatial & Spectral Error Diagnostics (Residual Maps & 2D FFT RPSD):**
+   - *Residual Error Maps ($|I_{\text{clean}} - I_{\text{denoised}}|$):* Classical filters irreversibly truncate structural scene contours (scene silhouettes emerge clearly on error maps), CAE lowers errors with moderate edge blurring, whereas Fourier KAN produces residuals resembling uncorrelated white noise with zero structural scene geometry.
+   - *Radial Energy Decay (2D FFT RPSD):* Fourier KAN uniquely and faithfully preserves natural scene power decay $P(f) \propto 1/f^2$, completely attenuating the high-frequency noise floor without washing out fine textures.
 
-3. **Trade-offs of Classical Spatial Filters & Latency:**
-   - Classical filters require zero training data, zero parameter storage, and operate in $0.5$–$1.3\text{ ms}$ on CPU.
-   - However, they exhibit fundamental physical limitations: Gaussian and Median filters blur true image edges indiscriminately, while Bilateral filtering struggles to suppress structured periodic or heavy Gaussian noise without oversmoothing fine gradients.
-   - Deep models on Apple Silicon MPS demonstrate consistent real-time throughput: CAE delivers $13.1\text{ ms}$ ($\approx 76\text{ FPS}$, fully meeting 60+ FPS real-time video streaming needs), while Fourier KAN achieves $104.5\text{ ms}$ ($\approx 9.6\text{ FPS}$, serving as the premier choice for sub-second high-precision diagnostic and archival image enhancement).
+3. **Engineering Trade-Off: Quality vs Latency vs Memory Footprint:**
+   - *Spatial Filters:* Zero storage ($0.00\text{ M}$ parameters, $0.00\text{ MB}$) and instantaneous CPU inference ($0.9$–$2.2\text{ ms}$, Median: $0.9\text{ ms}$, Gaussian: $1.1\text{ ms}$, Bilateral: $2.2\text{ ms}$), but limited frequency selectivity.
+   - *Convolutional Autoencoder (CAE):* $1.05\text{ M}$ parameters ($4.01\text{ MB}$), latency $13.0\text{ ms}$ on Apple Silicon MPS ($\approx 77\text{ FPS}$) — optimal selection for high-frame-rate real-time video streaming (60+ FPS).
+   - *Fourier KAN Autoencoder:* $7.78\text{ M}$ parameters ($29.70\text{ MB}$), latency $107.5\text{ ms}$ ($\approx 9.3\text{ FPS}$) — converts additional computational resources into maximum reconstruction fidelity, reducing Optuna validation loss by $-23.67\%$ ($0.2205$ vs $0.2888$ for CAE).
 
-4. **Spectral Power Distribution (2D FFT RPSD Analysis):**
-   - Radial Power Spectral Density profiles demonstrate that Fourier KAN closely traces the natural scene power decay of clean ground-truth images ($P(f) \propto 1/f^2$), whereas standard CAE exhibits spectral attenuation in mid-to-high frequency bands (causing subtle watercolor-like blurring).
+4. **Mathematical & Physical Advantages of Fourier KAN Basis:**
+   - Learnable 1D trigonometric kernels along connection edges operate as continuous harmonic interpolators, overcoming spectral bias (*Spectral Bias*) and escaping the rigid discrete receptive field constraints of standard CNN kernels.
+   - Sobolev amplitude decay ($\sigma_k \propto 1/k^2$) concentrates initial energy on low-frequency structural shapes, preventing high-frequency noise memorization (*noise memorization*) and suppressing Gibbs ringing artifacts near sharp boundaries.
+
+5. **Engineering Deployment Guidelines:**
+   - *Real-Time Video (60+ FPS):* Quantized CAE (INT8) or hardware-accelerated bilateral filtering with sub-millisecond frame latency.
+   - *Embedded / Edge AI (mobile ISPs, drones):* Compact CAE or KAN with a scaled-down harmonic basis ($K=2..3$, $C=24$).
+   - *High-Fidelity Scientific & Medical Imaging (X-Ray, MRI, microscopy):* Full-scale Fourier KAN ($K=4$, $C=64$) trained with composite loss $0.85 L_1 + 0.15 (1 - \text{SSIM})$ to ensure phase integrity and micro-pathology preservation.
+
+6. **Limitations & Future Directions:**
+   - Hardware acceleration for trigonometric kernel evaluation via TensorRT / CoreML (FP16/INT8).
+   - Dynamic adaptive selection of harmonic order $K$ across network depth and empirical validation on real-world raw sensor data (SIDD benchmark).
 
 ---
 
@@ -117,13 +127,13 @@ ComputerVision-PBY_HW16_Course_Project/
     │   ├── BSD68/                    # 68 monochrome evaluation benchmark images
     │   └── CBSD68/                   # 68 color RGB evaluation benchmark images
     ├── models/                       # Checkpoints, parameter manifests, and Optuna studies
-        ├── model_gaussian.json       # Optimal Gaussian filter kernel & sigma
-        ├── model_median.json         # Optimal Median filter kernel size
-        ├── model_bilateral.json      # Optimal Bilateral filter spatial & range sigmas
-        ├── model_cae.pth             # Trained PyTorch weights for Convolutional Autoencoder (1.05M)
-        ├── model_cae_params.json     # Best Optuna hyperparameters for CAE baseline
-        ├── model_fourier_kan.pth     # Trained PyTorch weights for Fourier KAN Autoencoder (7.78M)
-        └── model_fourier_kan_params.json # Best Optuna hyperparameters for Fourier KAN model
+    │   ├── model_gaussian.json       # Optimal Gaussian filter kernel & sigma
+    │   ├── model_median.json         # Optimal Median filter kernel size
+    │   ├── model_bilateral.json      # Optimal Bilateral filter spatial & range sigmas
+    │   ├── model_cae.pth             # Trained PyTorch weights for Convolutional Autoencoder (1.05M)
+    │   ├── model_cae_params.json     # Best Optuna hyperparameters for CAE baseline
+    │   ├── model_fourier_kan.pth     # Trained PyTorch weights for Fourier KAN Autoencoder (7.78M)
+    │   └── model_fourier_kan_params.json # Best Optuna hyperparameters for Fourier KAN model
     └── reports/                      # Visual benchmarks and performance plots across 5 noise modalities
 ```
 
